@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FiSi Lernhilfe V141 – Fachinformatiker Systemintegration</title>
+<title>FiSi Lernhilfe V142 – Fachinformatiker Systemintegration</title>
 <style>
   /* ===== V41: CSS-Token-System + Dark Mode ===== */
   :root {
@@ -665,7 +665,7 @@
       <div class="header-brand">
         <span class="header-logo">📚</span>
         <div>
-          <div class="header-title">FiSi Lernhilfe <span class="header-ver">V141</span></div>
+          <div class="header-title">FiSi Lernhilfe <span class="header-ver">V142</span></div>
           <div class="header-sub">Fachinformatiker Systemintegration · 12 Lernfelder</div>
         </div>
       </div>
@@ -10150,7 +10150,7 @@ const bessereAntwortenV58 = {
 // Selbsttest, der die Datenbestaende bei jedem Start pruefbar macht.
 (function v59(){
 
-  window.LERNHILFE_VERSION = 'V141';
+  window.LERNHILFE_VERSION = 'V142';
   const BEREICHE_GUELTIG = ['ap1','projekt','kai','aen','wiso'];
 
   // ---- Schluessel- und ID-Vergabe endgueltig festziehen ----
@@ -15589,7 +15589,7 @@ window.dozentErklaerungen = {
   // ==========================================================
   // ABSCHLUSS
   // ==========================================================
-  window.LERNHILFE_VERSION = 'V141';
+  window.LERNHILFE_VERSION = 'V142';
   aktualisiereFaelligChip();
   zeigeFortsetzenBanner();
   try { updateBoxBtns(); } catch(e){}
@@ -22849,9 +22849,13 @@ window.dozentErklaerungen = {
   /* ---------- 7) Start ---------- */
   baueKnopf();
   baueRang();
-  let gespeichert = 'aus';
-  try { gespeichert = localStorage.getItem(SCHLUESSEL) || 'aus'; } catch(e){}
-  setzeSkin(gespeichert === 'system');
+  // V142: Vorgabe ist jetzt die System-Oberflaeche. Wer sie ueber den
+  // Knopf abschaltet, bekommt 'aus' gespeichert und behaelt das bei
+  // jedem weiteren Start - die Entscheidung des Nutzers sticht also
+  // weiterhin, nur der Ausgangszustand hat sich gedreht.
+  let gespeichert = 'system';
+  try { gespeichert = localStorage.getItem(SCHLUESSEL) || 'system'; } catch(e){}
+  setzeSkin(gespeichert !== 'aus');
 
   window.v120Bericht = function(){
     return {
