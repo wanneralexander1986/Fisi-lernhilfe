@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FiSi Lernhilfe V163 – Fachinformatiker Systemintegration</title>
+<title>FiSi Lernhilfe V165 – Fachinformatiker Systemintegration</title>
 <style>
   /* ===== V41: CSS-Token-System + Dark Mode ===== */
   :root {
@@ -665,7 +665,7 @@
       <div class="header-brand">
         <span class="header-logo">📚</span>
         <div>
-          <div class="header-title">FiSi Lernhilfe <span class="header-ver">V163</span></div>
+          <div class="header-title">FiSi Lernhilfe <span class="header-ver">V165</span></div>
           <div class="header-sub">Fachinformatiker Systemintegration · 12 Lernfelder</div>
         </div>
       </div>
@@ -8756,6 +8756,7 @@ window.startEchtePruefung = function(){
     generatorThemen.forEach(x => ix.push({typ:'Thema',c:'#64748b',h:x.label||'',m:x.sub||'',v:'generator'}));  // label statt titel
     Object.keys(themenBereiche).forEach(k => ix.push({typ:'Lernfeld',c:'#2563eb',h:themenBereiche[k].name||k,m:themenBereiche[k].beschreibung||'',v:'themen',thema:k}));
     if(typeof grafiken !== 'undefined') grafiken.forEach(g => ix.push({typ:'Grafik',c:'#0891b2',h:g.titel,m:g.hinweis||'',v:'grafiken'}));
+    try{ if(typeof window.v165SuchEintraege==='function') return window.v165SuchEintraege().concat(ix); }catch(e){}
     return ix;
   }
   function esc(s){ return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
@@ -8766,9 +8767,9 @@ window.startEchtePruefung = function(){
     if(!t || t.length < 2){ hits=[]; res.innerHTML='<div class="v42-hit"><div class="m">Mindestens 2 Zeichen. ↑↓ navigieren · Enter öffnen · Esc schließen.</div></div>'; return; }
     if(!idx) idx = build();
     const tl = t.toLowerCase();
-    hits = idx.filter(x => (x.h+' '+x.m).toLowerCase().includes(tl)).slice(0,60);
+    hits = idx.filter(x => (x.h+' '+x.m+' '+(x.k||'')).toLowerCase().includes(tl)).slice(0,60);
     sel = 0;
-    if(!hits.length){ res.innerHTML = '<div class="v42-hit"><div class="m">Keine Treffer für „'+esc(t)+'“.</div></div>'; return; }
+    if(!hits.length){ res.innerHTML = '<div class="v42-hit"><div class="m">Keine Treffer für „'+esc(t)+'“. Versuche ein kürzeres oder anderes Wort, zum Beispiel „Ticket“, „Subnetz“ oder „Backup“.</div></div>'; return; }
     res.innerHTML = hits.map((x,i)=>`<div class="v42-hit${i===0?' sel':''}" data-i="${i}">
       <div class="h"><span class="v42-tag" style="background:${x.c};">${x.typ}</span>${mk(x.h,t)}</div>
       ${x.m?`<div class="m">${mk(x.m,t)}</div>`:''}</div>`).join('');
@@ -8778,6 +8779,7 @@ window.startEchtePruefung = function(){
   function oeffnen(i){
     const x = hits[i]; if(!x) return;
     const ovl = document.querySelector('.v42-ovl'); if(ovl) ovl.classList.remove('on');
+    if(typeof x.aktion==='function'){ try{ x.aktion(); }catch(e){} return; }
     const b = document.querySelector('.nav-btn[data-view="'+x.v+'"]'); if(b) b.click();
     if(x.v === 'uebungen' && x.lf) setTimeout(()=>setUebungsLF(x.lf), 150);        // echte Funktion statt Select
     if(x.v === 'themen' && x.thema) setTimeout(()=>{ try{ showThemaDetail(x.thema); }catch(e){} }, 150);
@@ -10234,7 +10236,7 @@ const bessereAntwortenV58 = {
 // Selbsttest, der die Datenbestaende bei jedem Start pruefbar macht.
 (function v59(){
 
-  window.LERNHILFE_VERSION = 'V163';
+  window.LERNHILFE_VERSION = 'V165';
   const BEREICHE_GUELTIG = ['ap1','projekt','kai','aen','wiso'];
 
   // ---- Schluessel- und ID-Vergabe endgueltig festziehen ----
@@ -13401,6 +13403,16 @@ window.dozentErklaerungen = {
   {begriff:'Third-Level-Support',langform:'Dritte Supportebene',kategorie:'betrieb',lf:'lf6',
    erklaerung:'Spezialisten, Entwickler und Hersteller für Fälle, die der Second Level nicht lösen kann, zum Beispiel Softwarefehler oder tiefgreifende Architekturprobleme. Der Anwender wendet sich nie direkt an diese Ebene; sie wird über die Eskalation eingebunden. Die Lösung wird in die Wissensdatenbank zurückgespeist.',
    verwandt:['Second-Level-Support','Eskalation','Wissensdatenbank']},
+  // ===== V164: Anatomie eines Servicetickets =====
+  {begriff:'Stammdaten',langform:'Stammdaten im Ticket',kategorie:'betrieb',lf:'lf6',
+   erklaerung:'Angaben, die den Gegenstand eines Tickets beschreiben und sich selten ändern: User (Name, Abteilung), Gerät (Hostname), CI und SLA-Klasse. Sie werden dem Ticket zugeordnet, oft automatisch aus dem User-Stammsatz oder der CMDB. Fehlerhafte oder leere Stammdaten verfälschen alles, was darauf aufbaut, etwa die SLA-Messung.',
+   beispiel:'Ticket INC-4528: User Voss, Hostname PC-GF-02, CI Notebook, SLA-Klasse Premium',verwandt:['Bewegungsdaten','CI','SLA','Ticketsystem']},
+  {begriff:'Bewegungsdaten',langform:'Bewegungsdaten im Ticket',kategorie:'betrieb',lf:'lf6',
+   erklaerung:'Angaben, die im Lauf der Bearbeitung entstehen und einen Zeitstempel tragen: Statuswechsel, Techniker-Notizen, E-Mails und Zeitbuchungen. Sie machen den Verlauf nachvollziehbar und sind die Grundlage für SLA-Messung (Zeitstempel) und Abrechnung (Zeitbuchungen).',
+   beispiel:'09:12 Status „in Bearbeitung“, 09:40 Notiz „Treiber neu installiert“, 10:05 Zeitbuchung 0,5 h',verwandt:['Stammdaten','SLA','Ticketsystem']},
+  {begriff:'CI',langform:'Configuration Item',kategorie:'betrieb',lf:'lf6',
+   erklaerung:'Einzelnes Objekt, das in der CMDB verwaltet wird: Server, Notebook, Switch, Software, aber auch Dienst oder Vertrag. Das Ticket verweist auf das betroffene CI. Über dessen Beziehungen zu anderen CIs lässt sich abschätzen, was von einer Störung noch betroffen ist.',
+   beispiel:'CI „Switch SW-OG2“ ist mit 24 Arbeitsplatz-CIs verbunden; fällt er aus, sind alle betroffen',verwandt:['CMDB','Asset-Management','Stammdaten']},
   ];
   window.glossarBegriffe = glossarBegriffe;
 
@@ -14293,7 +14305,8 @@ window.dozentErklaerungen = {
       '<tr><td>🏠 Start</td><td>Zeigt zuerst, was heute dran ist: fällige Wiederholungen oder, wenn nichts fällig ist, der nächste Schritt im Lernpfad – mit einem Knopf zum Loslegen. Darunter lässt sich die bisherige Übersicht aufklappen: Tagesziel, Serie, Schnellzugriff und der Stand je Lernfeld.</td></tr>' +
       '<tr><td>🔍 Suche</td><td>Findet mit Strg+K alles auf einmal: Fragen, Karten, Merksätze, Aufgaben, Abkürzungen.</td></tr>' +
       '<tr><td>📚 Lernen</td><td>Alles zum Verstehen, in sieben Reitern. <b>📖 Lernfelder</b>: der Stoff nach LF 1 bis LF 12 plus WISO, gegliedert wie der Rahmenlehrplan. <b>🎓 Dozent</b>: verständliche Erklärungen zu jedem Thema – die meisten fest hinterlegt, die übrigen von der KI erzeugt. <b>💡 Merksätze</b>: Eselsbrücken und Faustregeln, filterbar nach Lernfeld und Prüfungsbereich. <b>🧮 Tricks</b>: Rechenwege und Merkverfahren für die wiederkehrenden Aufgabentypen – mit Beispiel, Gegenprobe und der typischen Falle. <b>📐 Grafiken</b>: Schemata und Übersichten, wie sie in der Prüfung verlangt oder vorausgesetzt werden. <b>📚 Glossar</b>: Fachbegriffe zum Nachschlagen, untereinander verlinkt. <b>🗺️ Lernpfad</b>: zeigt je Lernfeld, wie weit du bist, und schlägt den nächsten sinnvollen Schritt vor. Passend dazu werden Lernfelder, deren Grundlagen noch dünn sind, überall blass dargestellt – gesperrt ist nichts.</td></tr>' +
-      '<tr><td>📝 Üben</td><td>Alles zum Abfragen und Rechnen, in sechs Reitern. <b>🧠 Quiz</b>: Multiple-Choice mit Erklärung zur Lösung, filterbar nach Lernfeld und Prüfungsbereich. Eine Combo-Serie belohnt richtige Antworten in Folge mit mehr XP (ab 3 richtigen ×2, ab 6 ×3, ab 10 ×4, ab 15 ×5); ein Fehler ändert nichts an der Serie, und in der Prüfungssimulation gibt es keine Combos. Im Setup lässt sich „Erst selbst formulieren“ einschalten: dann kommt zuerst ein Textfeld, die Optionen erst danach. <b>🔄 Karteikarten</b>: Karten mit Sitzungssystem – drei Runden an drei Tagen bis „fertig“. <b>🔤 Abkürzungen</b>: der Abkürzungstrainer. <b>📝 Übungsaufgaben</b>: offene Prüfungsaufgaben mit Lösungsweg. Oben steht zusätzlich der aufklappbare Bereich <b>Zuordnen und Sortieren</b>: zehn Übungen, bei denen du OSI-Schichten, Abläufe wie DORA und Komponenten einer Netzstruktur per Ziehen oder Antippen an die richtige Stelle bringst. Darunter der <b>CLI-Schnelltest</b>: ein nachgebildetes Konsolenfenster für 27 PowerShell- und Linux-Befehle – du bekommst eine Aufgabe gestellt, tippst den Befehl ein und siehst die passende Ausgabe samt Erklärung. Ganz unten das <b>Ticketsystem</b>: 32 Störungsmeldungen in drei Support-Levels – Level 1 (First Level: Standardstörungen), Level 2 (Second Level: Netz, Server, Rechte) und Level 3 (Third Level: komplexe Fälle mit mehreren Ursachen), quer durch alle zwölf Lernfelder. Bei jedem Ticket forderst du Befunde an, grenzt die Ursache ein und wählst die passende Maßnahme. Level 2 und 3 öffnen sich, wenn im vorigen Level sieben Fälle vollständig gelöst sind. <b>✏️ Rechentrainer</b>: Aufgaben mit Zufallszahlen, unbegrenzt wiederholbar, mit vollständigem Lösungsweg – von Subnetting über Kalkulation bis Elektrotechnik. Ganz oben steht zusätzlich der aufklappbare <b>Subnetz-Rechner</b>, in den du eigene Adressen eintippst, um eine Aufgabe aus dem Unterricht nachzurechnen. <b>✨ KI-Generator</b>: erzeugt neue Aufgaben zu einem Thema.</td></tr>' +
+      '<tr><td>📝 Üben</td><td>Alles zum Abfragen und Rechnen, in sechs Reitern. <b>🧠 Quiz</b>: Multiple-Choice mit Erklärung zur Lösung, filterbar nach Lernfeld und Prüfungsbereich. Eine Combo-Serie belohnt richtige Antworten in Folge mit mehr XP (ab 3 richtigen ×2, ab 6 ×3, ab 10 ×4, ab 15 ×5); ein Fehler ändert nichts an der Serie, und in der Prüfungssimulation gibt es keine Combos. Im Setup lässt sich „Erst selbst formulieren“ einschalten: dann kommt zuerst ein Textfeld, die Optionen erst danach. <b>🔄 Karteikarten</b>: Karten mit Sitzungssystem – drei Runden an drei Tagen bis „fertig“. <b>🔤 Abkürzungen</b>: der Abkürzungstrainer. <b>📝 Übungsaufgaben</b>: offene Prüfungsaufgaben mit Lösungsweg. Oben steht zusätzlich der aufklappbare Bereich <b>Zuordnen und Sortieren</b>: zehn Übungen, bei denen du OSI-Schichten, Abläufe wie DORA und Komponenten einer Netzstruktur per Ziehen oder Antippen an die richtige Stelle bringst. Darunter der <b>CLI-Schnelltest</b>: ein nachgebildetes Konsolenfenster für 27 PowerShell- und Linux-Befehle – du bekommst eine Aufgabe gestellt, tippst den Befehl ein und siehst die passende Ausgabe samt Erklärung. <b>✏️ Rechentrainer</b>: Aufgaben mit Zufallszahlen, unbegrenzt wiederholbar, mit vollständigem Lösungsweg – von Subnetting über Kalkulation bis Elektrotechnik. Ganz oben steht zusätzlich der aufklappbare <b>Subnetz-Rechner</b>, in den du eigene Adressen eintippst, um eine Aufgabe aus dem Unterricht nachzurechnen. <b>✨ KI-Generator</b>: erzeugt neue Aufgaben zu einem Thema.</td></tr>' +
+      '<tr><td>🎫 Tickets</td><td>Das Ticketsystem: 34 Störungsmeldungen in drei Support-Levels – Level 1 (First Level: Standardstörungen), Level 2 (Second Level: Netz, Server, Rechte) und Level 3 (Third Level: komplexe Fälle mit mehreren Ursachen), quer durch alle zwölf Lernfelder. Bei jedem Ticket forderst du Befunde an, grenzt die Ursache ein und wählst die passende Maßnahme. Level 2 und 3 öffnen sich, wenn im vorigen Level sieben Fälle vollständig gelöst sind. Du erreichst es über den Menüpunkt <b>Tickets</b>, die Kachel auf der Startseite oder die Suche (Strg+K).</td></tr>' +
       '<tr><td>🎯 Prüfung</td><td>Alles rund um die Abschlussprüfung, in drei Reitern. <b>🎯 Prüfungssimulation</b>: Simulation unter Zeitdruck mit Auswertung je Lernfeld. <b>📋 Prüfungsvorbereitung</b>: drei vollständige AP1-Prüfungssimulationen nach IHK-Muster – Stadtbibliothek Falkenberg, Pflegedienst Elbufer und Holzwerk Lindental, je 100 Punkte in vier Handlungsschritten. Zu jeder Teilaufgabe steht die Punktzahl, die Lösung klappst du einzeln auf, wenn du deine eigene Antwort vergleichen willst. <b>⏳ Endspurt</b>: rechnet den offenen Bestand gegen die Tage bis zum nächsten Prüfungstermin und nennt ein Tagespensum.</td></tr>' +
       '<tr><td>⚔️ Battle</td><td>Quiz gegeneinander: Raum eröffnen, Code weitergeben, Lernfelder auswählen, auf Zeit antworten. Braucht für echte Partien eine Internetverbindung.</td></tr>' +
       '<tr><td>📊 Fortschritt</td><td>Deine Auswertung und die Verwaltung, in sechs Reitern. <b>📊 Statistik</b>: Statistik und Notenprognose. <b>🔁 Wiederholung</b>: die Wiederholungsliste deiner Fehler. <b>🏅 Erfolge</b>: deine Abzeichen. <b>💾 Daten &amp; Backup</b>: die Datensicherung und der Schalter für die Lernpfad-Empfehlungen. <b>❓ FAQ</b>: die ausführliche FAQ. <b>👋 Einführung</b>: diese Seite.</td></tr>' +
@@ -15675,7 +15688,7 @@ window.dozentErklaerungen = {
   // ==========================================================
   // ABSCHLUSS
   // ==========================================================
-  window.LERNHILFE_VERSION = 'V163';
+  window.LERNHILFE_VERSION = 'V165';
   aktualisiereFaelligChip();
   zeigeFortsetzenBanner();
   try { updateBoxBtns(); } catch(e){}
@@ -31645,6 +31658,477 @@ window.dozentErklaerungen = {
 })();
 // === V163 ENDE ===
 
+// === V164: ANATOMIE EINES SERVICETICKETS ==========================
+// Anlass: Folie "Anatomie eines Servicetickets". Ein Ticket besteht aus
+// Stammdaten (User, Gerät, CI, SLA-Klasse) und Bewegungsdaten (Statuswechsel,
+// Techniker-Notizen, E-Mails, Zeitbuchungen). Es ist das Fundament für
+// Automatisierung, SLA-Messung und Abrechnung.
+//
+// Diese Ebene ergänzt (LF 6, Serviceanfragen bearbeiten):
+//   5 Karteikarten, 5 Quizfragen, 1 Merksatz
+//   2 Tickets im Ticketsystem (V160): Level 1 (Abrechnung, Zeitbuchungen fehlen)
+//   und Level 2 (SLA-Auswertung gegen falsche SLA-Klasse im Stammsatz)
+// Die Glossarbegriffe Stammdaten, Bewegungsdaten, SLA und CI stehen direkt in
+// der Begriffsliste der Glossar-Ebene (V82), weil deren Verweistabellen beim
+// Laden aufgebaut werden.
+//
+// Kennzeichen für die V69-Startprüfung: v164-ticketanatomie
+(function v164Ticketanatomie() {
+  'use strict';
+
+  const KAT = 'LF 6: Serviceanfragen bearbeiten';
+  const BER = ['kai'];
+  const gezaehlt = { karten: 0, fragen: 0, merksaetze: 0, tickets: 0, uebersprungen: 0 };
+  const SOLL_KARTEN = [], SOLL_FRAGEN = [];
+
+  function karte(front, back) {
+    SOLL_KARTEN.push(front);
+    if (karteikarten.some(function (k) { return k.front === front; })) { gezaehlt.uebersprungen++; return; }
+    karteikarten.push({ front: front, back: back, lfs: ['lf6'] });
+    gezaehlt.karten++;
+  }
+  function frage(f, antworten, korrekt, erklaerung) {
+    SOLL_FRAGEN.push(f);
+    if (quizFragen.some(function (q) { return q.frage === f; })) { gezaehlt.uebersprungen++; return; }
+    quizFragen.push({ frage: f, antworten: antworten, korrekt: korrekt, kategorie: KAT,
+      erklaerung: erklaerung, pruefungsbereiche: BER });
+    gezaehlt.fragen++;
+  }
+  function merk(text) {
+    if (merksaetze.some(function (m) { return m.text === text; })) { gezaehlt.uebersprungen++; return; }
+    merksaetze.push({ text: text, kategorie: KAT });
+    gezaehlt.merksaetze++;
+  }
+
+  /* ---------- Karteikarten ---------- */
+  karte('Aufbau eines Servicetickets: Stammdaten und Bewegungsdaten',
+    'Ein Ticket hat zwei Teile. Stammdaten beschreiben, worum es geht und wie wichtig es ist: User (Name, Abteilung), Gerät (Hostname), CI (Configuration Item) und SLA-Klasse. Bewegungsdaten dokumentieren, was im Lauf des Vorgangs passiert: Statuswechsel, Techniker-Notizen, E-Mails und Zeitbuchungen, jeweils mit Zeitstempel.');
+  karte('Stammdaten im Ticket: Welche gehören dazu und wozu dienen sie?',
+    'User (Name, Abteilung): wer ist betroffen, wen kontaktiere ich. Gerät (Hostname): wo tritt es auf. CI (Configuration Item): welches Objekt aus der CMDB ist betroffen, daraus lassen sich Beziehungen und Auswirkungen ableiten. SLA-Klasse: welche Reaktions- und Lösungsfristen gelten. Stammdaten ändern sich selten und werden dem Ticket zugeordnet.');
+  karte('Bewegungsdaten im Ticket: Welche gehören dazu und wozu dienen sie?',
+    'Statuswechsel (offen, in Bearbeitung, wartet, gelöst, geschlossen), Techniker-Notizen (Analyse und Maßnahmen), E-Mails (Kommunikation mit dem Anwender) und Zeitbuchungen (Aufwand). Jeder Eintrag trägt einen Zeitstempel. Bewegungsdaten wachsen mit jeder Aktion und machen den Verlauf nachvollziehbar.');
+  karte('Wofür ist ein sauber gepflegtes Ticket die Grundlage?',
+    'Automatisierung: Regeln greifen auf Stammdaten und Status zu, z. B. Zuweisung nach CI oder Eskalation bei Fristablauf. SLA-Messung: Zeitstempel der Statuswechsel werden gegen die Fristen der SLA-Klasse gerechnet. Abrechnung: Zeitbuchungen und Vertragsdaten ergeben die Leistungsabrechnung. Fehlen Angaben im Ticket, fehlt die Grundlage für alle drei.');
+  karte('Stammdaten oder Bewegungsdaten? Die Unterscheidung',
+    'Stammdaten ändern sich selten und gehören zum Objekt: Name des Users, Hostname, CI, SLA-Klasse. Bewegungsdaten entstehen im Vorgang und sind zeitbezogen: Statuswechsel, Notizen, E-Mails, Zeitbuchungen. Merkhilfe: Stammdaten beantworten „Wer, was, wie wichtig?“, Bewegungsdaten „Was ist wann passiert?“.');
+
+  /* ---------- Quizfragen ---------- */
+  frage('Was gehört zu den Stammdaten eines Servicetickets?',
+    ['Der Wechsel des Status von „offen“ auf „in Bearbeitung“',
+     'Der Hostname des betroffenen Geräts und die zugeordnete SLA-Klasse',
+     'Die E-Mail-Korrespondenz zwischen Techniker und Anwender',
+     'Die gebuchte Arbeitszeit des Technikers am Ticket'], 1,
+    'Stammdaten beschreiben den Gegenstand des Tickets und ändern sich selten: User, Gerät (Hostname), CI und SLA-Klasse. Statuswechsel, E-Mails und Zeitbuchungen entstehen im Verlauf des Vorgangs und sind Bewegungsdaten.');
+  frage('Welche Angaben zählen zu den Bewegungsdaten eines Tickets?',
+    ['Name und Abteilung des Melders',
+     'Die SLA-Klasse des Kunden',
+     'Techniker-Notizen und Zeitbuchungen mit Zeitstempel',
+     'Das betroffene Configuration Item (CI)'], 2,
+    'Bewegungsdaten dokumentieren den Verlauf: Statuswechsel, Techniker-Notizen, E-Mails und Zeitbuchungen, jeweils mit Zeitstempel. Melder, SLA-Klasse und CI gehören als Stammdaten zum Ticket und ändern sich im Verlauf normalerweise nicht.');
+  frage('Wozu dient die SLA-Klasse im Ticket?',
+    ['Sie gibt an, welcher Techniker für das Ticket zuständig ist',
+     'Sie speichert, wie lange der Techniker am Ticket gearbeitet hat',
+     'Sie legt fest, in welcher Reihenfolge Tickets zeitlich abgelegt werden',
+     'Sie bestimmt die geltenden Reaktions- und Lösungsfristen, an denen die Einhaltung gemessen wird'], 3,
+    'Die SLA-Klasse verknüpft das Ticket mit den vereinbarten Fristen. Aus den Zeitstempeln der Bewegungsdaten wird dann gemessen, ob Reaktions- und Lösungszeit eingehalten wurden. Der zuständige Techniker steht in der Zuweisung, der Aufwand in den Zeitbuchungen.');
+  frage('Warum werden am Ticket Zeitbuchungen erfasst?',
+    ['Für die Abrechnung der Leistungen und die Auswertung des Aufwands',
+     'Um die Reaktionsfrist der SLA-Klasse automatisch zu verlängern',
+     'Damit das Ticket automatisch an den nächsten Support-Level eskaliert wird',
+     'Weil sie den Hostnamen des betroffenen Geräts im Ticket ersetzen'], 0,
+    'Zeitbuchungen halten den Aufwand fest. Er fließt in die Abrechnung und in Auswertungen zur Auslastung ein. Sie verlängern keine Fristen, lösen keine Eskalation aus und haben mit dem Hostnamen nichts zu tun.');
+  frage('Ein Auswertungsbericht zeigt, dass die Fristen der SLA-Klasse nie überschritten wurden, obwohl sich Anwender über lange Wartezeiten beschweren. Wo liegt ein naheliegender Prüfpunkt?',
+    ['Die Zeitbuchungen der Techniker, weil dort die Fristen berechnet werden',
+     'Die der Tickets zugeordnete SLA-Klasse im Stammsatz, weil gegen die falsche Frist gemessen werden könnte',
+     'Die E-Mail-Korrespondenz, weil lange Mails die Messung verfälschen',
+     'Die Hostnamen der Geräte, weil sie die Fristen festlegen'], 1,
+    'Gemessen wird gegen die Frist der zugeordneten SLA-Klasse. Ist sie im Stammsatz falsch oder zu großzügig hinterlegt, wirkt die Messung fehlerfrei, obwohl der Anwender mehr erwartet. Zeitbuchungen betreffen den Aufwand, nicht die Fristen, und E-Mails oder Hostnamen beeinflussen die Fristberechnung nicht.');
+
+  /* ---------- Merksatz ---------- */
+  merk('Ticket = Stammdaten + Bewegungsdaten. Stammdaten (User, Gerät, CI, SLA-Klasse): wer, was, wie wichtig. Bewegungsdaten (Statuswechsel, Notizen, E-Mails, Zeitbuchungen): was ist wann passiert. Beides zusammen ist die Grundlage für Automatisierung, SLA-Messung und Abrechnung.');
+
+  /* ---------- Tickets (Einhängepunkt aus V139/V160) ---------- */
+  const haken = window.v139Haken;
+  function teil(frage, t) {
+    return { frage: frage, optionen: t.o.slice(), richtig: t.p, begruendung: t.b };
+  }
+  function F(id, lf, stufe, bereich, titel, nr, melder, prio, meldung, befunde, u, m, abschluss) {
+    return {
+      id: id, lf: lf, bereich: bereich, stufe: stufe, titel: titel,
+      ticket: { nr: nr, melder: melder, prio: prio, meldung: meldung },
+      befunde: befunde.map(function (b) { return { f: b[0], a: b[1], schluessel: b[2] === 1 }; }),
+      ursache: teil('Was ist die Ursache?', u),
+      massnahme: teil('Welche Maßnahme ist richtig?', m),
+      abschluss: abschluss
+    };
+  }
+  if (haken && Array.isArray(haken.faelle)) {
+    const NEU = [
+      F('abrechnung-zeitbuchung', 'LF 6', 'leicht', 'Ticketdokumentation / Abrechnung', 'Monatsabrechnung weist viel zu wenig Supportstunden aus', 'INC-4527',
+        'Frau Weiß, Buchhaltung', 'Mittel',
+        'In der Monatsabrechnung für den Kunden Brandt GmbH stehen nur 2 Stunden Support. Die Techniker sagen, sie seien allein vor Ort mehr als 9 Stunden dort gewesen. Rechnung und Aufwand passen nicht zusammen.',
+        [
+          ['Tickets des Kunden Brandt GmbH im Abrechnungsmonat auflisten', '6 Tickets, alle geschlossen.\n3 Tickets haben Zeitbuchungen (zusammen 2,0 h).\n3 Tickets haben keine Zeitbuchung.', 1],
+          ['Techniker-Notizen der Tickets ohne Zeitbuchung lesen', 'INC-4488: „Vor-Ort-Einsatz, Switch getauscht, ca. 2,5 h“\nINC-4491: „Drucker neu installiert, Treiber, 1,5 h“\nINC-4493: „Notebook-Einrichtung vor Ort, ca. 3,5 h“', 1],
+          ['Abrechnungsexport und seine Datenquelle ansehen', 'Der Export summiert ausschließlich gebuchte Zeiten aus den Zeitbuchungen der Tickets. Notizen und Statuswechsel fließen nicht ein.', 1],
+          ['Vertragsdaten und Stundensatz des Kunden prüfen', 'Vertrag aktiv, Stundensatz 79 Euro, korrekt hinterlegt.', 0],
+          ['Statuswechsel der sechs Tickets prüfen', 'Alle Wechsel vollständig mit Zeitstempel: offen, in Bearbeitung, gelöst, geschlossen.', 0]
+        ],
+        { p: 3, o: [
+            'Der Stundensatz im Vertrag ist falsch hinterlegt, deshalb fällt der Rechnungsbetrag zu niedrig aus.',
+            'Die Statuswechsel fehlen im Ticket, daher kann der Export den Aufwand nicht berechnen.',
+            'Der Kunde ist in der Ticketliste dem falschen Vertrag zugeordnet worden und wird deshalb gekürzt.',
+            'Drei Tickets haben keine Zeitbuchung, der Export zählt aber nur gebuchte Zeiten.'],
+          b: 'Drei der sechs Tickets haben keine Zeitbuchung. In den Techniker-Notizen steht der Aufwand (2,5 + 1,5 + 3,5 = 7,5 Stunden), zusammen mit den gebuchten 2,0 Stunden ergibt das die genannten gut 9 Stunden. Der Export zählt aber nur Zeitbuchungen. Stundensatz und Vertrag sind korrekt, und die Statuswechsel sind vollständig.' },
+        { p: 1, o: [
+            'Die Rechnung unverändert versenden und die fehlenden Stunden im Folgemonat nachberechnen, damit der Kunde nichts bemerkt.',
+            'Zeiten nach den Notizen nachbuchen, neu abrechnen, Buchung beim Schließen verpflichtend machen.',
+            'Den Stundensatz für den Kunden pauschal erhöhen, damit die Summe wieder zum Aufwand passt.',
+            'Den Abrechnungsexport so ändern, dass er die Stunden aus den Notizen als Freitext ausliest.'],
+          b: 'Die fehlenden Zeitbuchungen werden anhand der Notizen nachgetragen, danach wird neu abgerechnet. Damit es nicht wieder passiert, sollte das Ticket nur mit Zeitbuchung geschlossen werden können. Nachberechnen im Folgemonat verschleppt den Fehler, ein höherer Stundensatz ist gegenüber dem Kunden nicht vereinbart, und Freitext auszulesen ist fehleranfällig.' },
+        'Die Abrechnung greift auf die Bewegungsdaten zu, genauer auf die Zeitbuchungen. Was dort fehlt, kann nicht abgerechnet werden, selbst wenn es in den Notizen steht. Deshalb gehören Zeitbuchungen zur sauberen Ticketdokumentation. Ein Pflichtfeld beim Schließen sichert die Grundlage für Abrechnung und Auswertung.'),
+
+      F('sla-klasse-falsch', 'LF 6', 'mittel', 'SLA / Stammdaten', 'SLA-Bericht zeigt 100 Prozent, die Geschäftsleitung wartet trotzdem Stunden', 'INC-4528',
+        'Herr Voss, Service Level Manager', 'Hoch',
+        'Unser monatlicher SLA-Bericht meldet 100 Prozent Einhaltung. Die Geschäftsleitung beschwert sich aber, dass ihre Störungen regelmäßig erst nach Stunden angefasst werden. Vertraglich haben sie vier Stunden Lösungszeit und eine Reaktion innerhalb von 30 Minuten.',
+        [
+          ['Stichprobe: Tickets der Geschäftsleitung im Bericht ansehen', 'Reaktionszeiten 3 bis 6 Stunden, Lösungszeiten bis 28 Stunden.\nSLA-Klasse an allen Tickets: „Standard“ (Reaktion 8 h, Lösung 72 h).', 1],
+          ['Vertragsdaten der Geschäftsleitung nachlesen', 'Vereinbart ist die Klasse „Premium“: Reaktion 30 Minuten, Lösung 4 Stunden.', 1],
+          ['Wie wird die SLA-Klasse beim Anlegen eines Tickets gesetzt?', 'Das Ticketsystem übernimmt die Klasse aus dem User-Stammsatz. Ist das Feld leer, wird „Standard“ eingetragen.', 1],
+          ['User-Stammsätze der Geschäftsleitung ansehen', 'Feld „SLA-Klasse“ bei allen fünf Personen leer. Der letzte Import aus der Personalverwaltung hat das Feld nicht befüllt.', 1],
+          ['Zeitstempel der Statuswechsel auf Fehler prüfen', 'Lückenlos und in Ordnung, Uhren der Systeme synchron.', 0],
+          ['Berechnungslogik des SLA-Berichts nachvollziehen', 'Rechnet korrekt: Zeitstempel der Statuswechsel gegen die Fristen der Klasse im Ticket.', 0]
+        ],
+        { p: 0, o: [
+            'Die Stammdaten sind falsch: Im User-Stammsatz fehlt die SLA-Klasse, die Tickets laufen deshalb mit „Standard“.',
+            'Die Bewegungsdaten sind falsch: Die Zeitstempel der Statuswechsel sind verfälscht und täuschen schnelle Bearbeitung vor.',
+            'Der SLA-Bericht rechnet fehlerhaft und zeigt deshalb pauschal 100 Prozent an.',
+            'Die Techniker arbeiten die Tickets der Geschäftsleitung bewusst langsamer ab als vereinbart.'],
+          b: 'Die Tickets tragen die Klasse „Standard“, vereinbart ist aber „Premium“. Die Klasse kommt aus dem User-Stammsatz, und dort ist das Feld seit dem Import leer. Gemessen wird also gegen 8 und 72 Stunden statt gegen 30 Minuten und 4 Stunden. Zeitstempel und Berichtslogik sind in Ordnung, und die langsame Bearbeitung ist die Folge der falschen Priorisierung nach „Standard“, nicht deren Absicht.' },
+        { p: 2, o: [
+            'Den SLA-Bericht abschalten, bis eine neue Auswertungssoftware beschafft ist.',
+            'Die Fristen der Klasse „Standard“ verkürzen, damit alle Kunden schneller bedient werden.',
+            'Stammsätze korrigieren, Tickets neu zuordnen, Bericht neu erzeugen, Import prüfen.',
+            'Den Tickets der Geschäftsleitung einen Hinweis in den Notizen anhängen, dass sie vorrangig zu bearbeiten sind.'],
+          b: 'Die Ursache liegt in den Stammdaten, also werden sie korrigiert. Die betroffenen Tickets bekommen die richtige Klasse, danach wird der Bericht neu erzeugt, damit die Zahlen stimmen. Eine Prüfung im Import verhindert, dass leere Felder wieder zu „Standard“ führen. Den Bericht abzuschalten oder die Standardfristen zu ändern löst das Problem nicht, und ein Notizhinweis wirkt weder auf Fristen noch auf die Messung.' },
+        'Die SLA-Klasse ist ein Stammdatum und bestimmt die Fristen, gegen die gemessen wird. Ist sie falsch oder leer, sieht die Messung fehlerfrei aus, obwohl der Kunde schlechter bedient wird. Bei auffällig guten Zahlen zuerst die Stammdaten prüfen, nicht nur die Berechnung. Ein Import sollte Pflichtfelder wie die SLA-Klasse validieren.')
+    ];
+    NEU.forEach(function (f) {
+      if (haken.faelle.some(function (x) { return x.id === f.id; })) { gezaehlt.uebersprungen++; return; }
+      haken.faelle.push(f); gezaehlt.tickets++;
+    });
+  }
+
+  window.v164Bericht = function () {
+    // v164-ticketanatomie
+    const maengel = [];
+    ['Stammdaten', 'Bewegungsdaten', 'CI'].forEach(function (b) {
+      if (!window.glossarBegriffe || !window.glossarBegriffe.some(function (g) { return g.begriff === b; })) maengel.push('Glossarbegriff fehlt: ' + b);
+    });
+    SOLL_KARTEN.forEach(function (t) { if (!karteikarten.some(function (k) { return k.front === t; })) maengel.push('Karte fehlt: ' + t.slice(0, 40)); });
+    SOLL_FRAGEN.forEach(function (t) { if (!quizFragen.some(function (q) { return q.frage === t; })) maengel.push('Quizfrage fehlt: ' + t.slice(0, 40)); });
+    ['abrechnung-zeitbuchung', 'sla-klasse-falsch'].forEach(function (id) {
+      if (!window.v139Haken || !window.v139Haken.faelle.some(function (f) { return f.id === id; })) maengel.push('Ticket fehlt: ' + id);
+    });
+    return { ebene: 'V164', karten: gezaehlt.karten, fragen: gezaehlt.fragen, merksaetze: gezaehlt.merksaetze,
+             tickets: gezaehlt.tickets, uebersprungen: gezaehlt.uebersprungen, maengel: maengel };
+  };
+})();
+// === V164 ENDE ===
+
+// === V165: TICKETSYSTEM IM MENÜ, ERWEITERTE SUCHE, SCHNELLZUGRIFFE ===
+// Anlass: Nutzer fanden das Ticketsystem nicht. Es steckte als zugeklappter
+// Kasten ganz oben in "Üben / Übungsaufgaben".
+//
+// Diese Ebene ändert nichts an Lernstand, Battle oder bestehenden Ansichten:
+//  1) Eigener Menüpunkt "🎫 Tickets" im Bereich "Bereiche" mit eigener Ansicht.
+//     Der vorhandene Ticket-Kasten (V139/V160) wird dorthin umgesetzt, nicht
+//     neu geschrieben. In "Übungsaufgaben" bleibt ein Hinweis mit Knopf.
+//  2) Die Suche (V47, fixSuche) kennt zusätzlich Funktionen, alle Tickets und das
+//     Glossar. Dafür liefert diese Ebene window.v165SuchEintraege(); V47
+//     ruft sie beim Aufbau des Suchindex auf. Treffer mit "aktion" öffnen die
+//     Funktion direkt.
+//  3) Die Startseite bekommt unter "Heute dran" sechs Schnellzugriffe und
+//     eine Zeile mit dem Ticket-Fortschritt (Level und Rang stehen schon im Kopf).
+//
+// Kennzeichen für die V69-Startprüfung: v165-navigation
+(function v165Navigation() {
+  'use strict';
+
+  const nav = document.getElementById('main-nav');
+  if (!nav) return;
+
+  function z(fn, ersatz) { try { const r = fn(); return r === undefined ? ersatz : r; } catch (e) { return ersatz; } }
+  function knopf(v) { return document.querySelector('.nav-btn[data-view="' + v + '"]'); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function geh(v) {
+    const b = knopf(v);
+    if (b) b.click();
+    else if (typeof aktiviereView === 'function') aktiviereView(v);
+  }
+
+  /* ---------- Formatierung ---------- */
+  const css = document.createElement('style');
+  css.textContent = [
+    '#view-tickets .v165-kopf{margin:0 0 14px;}',
+    '#view-tickets .v165-kopf h2{margin:0 0 4px;font-size:22px;color:var(--text);}',
+    '#view-tickets .v165-kopf p{margin:0;font-size:14px;line-height:1.6;color:var(--text2);max-width:70ch;}',
+    '.v165-hinweis{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 16px;padding:12px 14px;',
+    '  border-radius:11px;border:2px solid var(--border);background:var(--surface2);color:var(--text);font-size:13.5px;line-height:1.5;}',
+    '.v165-hinweis button{padding:8px 14px;border:0;border-radius:9px;background:var(--primary);color:#fff;',
+    '  font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;}',
+    '.v165-schnell{margin:0 0 18px;}',
+    '.v165-schnell .v165-stand{font-size:13px;color:var(--text3);margin:0 0 10px;line-height:1.5;}',
+    '.v165-gitter{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}',
+    '.v165-kachel{display:block;width:100%;text-align:left;padding:14px 15px;border-radius:12px;cursor:pointer;',
+    '  background:var(--surface);border:1px solid var(--border);border-left:5px solid var(--border);color:var(--text);',
+    '  font-family:inherit;min-height:84px;}',
+    '.v165-kachel:hover{border-color:var(--primary);}',
+    '.v165-kachel:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}',
+    '.v165-kachel.haupt{border-left-color:var(--primary);background:var(--primary-bg,var(--surface));}',
+    '.v165-kachel b{display:block;font-size:15px;margin:0 0 3px;}',
+    '.v165-kachel span{display:block;font-size:12.5px;line-height:1.45;color:var(--text2);}',
+    '@media(max-width:900px){.v165-gitter{grid-template-columns:repeat(2,1fr);}}',
+    '@media(max-width:420px){.v165-gitter{grid-template-columns:1fr;}.v165-kachel{min-height:0;}}'
+  ].join('\n');
+  document.head.appendChild(css);
+
+  /* ---------- 1) Ansicht und Menüpunkt "Tickets" ---------- */
+  let ansicht = document.getElementById('view-tickets');
+  if (!ansicht) {
+    ansicht = document.createElement('div');
+    ansicht.className = 'view';
+    ansicht.id = 'view-tickets';
+    ansicht.innerHTML = '<div class="v165-kopf"><h2>🎫 Ticketsystem</h2>' +
+      '<p>Störungsmeldungen wie im Service Desk bearbeiten: Befunde anfordern, die Ursache eingrenzen und die richtige Maßnahme wählen. Drei Support-Level, vom einfachen Fall bis zur schwierigen Analyse.</p></div>';
+    const uebungen = document.getElementById('view-uebungen');
+    if (uebungen && uebungen.parentNode) uebungen.parentNode.insertBefore(ansicht, uebungen.nextSibling);
+    else document.body.appendChild(ansicht);
+  }
+
+  // Den vorhandenen Ticket-Kasten umsetzen. In "Übungsaufgaben" bleibt ein Hinweis.
+  function kastenUmsetzen() {
+    const box = document.getElementById('ticket-modul');
+    if (!box) return false;
+    if (box.parentNode !== ansicht) {
+      const uebungen = document.getElementById('view-uebungen');
+      const alt = box.parentNode;
+      ansicht.appendChild(box);
+      box.style.margin = '0';
+      if (uebungen && alt === uebungen && !document.getElementById('v165-hinweis')) {
+        const h = document.createElement('div');
+        h.id = 'v165-hinweis';
+        h.className = 'v165-hinweis';
+        h.innerHTML = '<span>🎫 Das Ticketsystem hat jetzt einen eigenen Menüpunkt.</span>';
+        const k = document.createElement('button');
+        k.type = 'button';
+        k.textContent = 'Zum Ticketsystem';
+        k.addEventListener('click', function () { oeffnen(); });
+        h.appendChild(k);
+        const layout = uebungen.querySelector('.uebung-layout');
+        if (layout) uebungen.insertBefore(h, layout); else uebungen.appendChild(h);
+      }
+    }
+    return true;
+  }
+
+  function aufklappen() {
+    const kl = document.getElementById('tick-klapp');
+    if (kl && /^\s*▸/.test(kl.textContent)) kl.click();
+  }
+
+  function oeffnen(fallId) {
+    kastenUmsetzen();
+    if (typeof aktiviereView === 'function') aktiviereView('tickets');
+    if (typeof window.renderTickets === 'function') z(window.renderTickets);
+    aufklappen();
+    if (fallId) {
+      let s = ansicht.querySelector('[data-fstart="' + fallId + '"]');
+      if (!s) {   // läuft schon ein Fall: Kasten zu- und wieder aufklappen setzt die Auswahl zurück
+        const kl = document.getElementById('tick-klapp');
+        if (kl) { kl.click(); aufklappen(); }
+        s = ansicht.querySelector('[data-fstart="' + fallId + '"]');
+      }
+      if (s) s.click();
+    }
+    const tg = document.getElementById('v45-menu-toggle');
+    if (window.innerWidth <= 700) {
+      nav.classList.add('v45-zu');
+      if (tg) tg.innerHTML = '☰ 🎫 Tickets<span style="float:right;opacity:.6;">Menü</span>';
+    }
+    window.scrollTo(0, 0);
+  }
+
+  const gruppe = document.getElementById('v158-bereiche');
+  const vorlage = knopf('battle');
+  let tKnopf = knopf('tickets');
+  if (!tKnopf && gruppe && vorlage) {
+    tKnopf = vorlage.cloneNode(true);
+    tKnopf.dataset.view = 'tickets';
+    tKnopf.removeAttribute('id');
+    tKnopf.classList.remove('active');
+    tKnopf.setAttribute('aria-selected', 'false');
+    const em = tKnopf.querySelector('.v123-emoji');
+    if (em) {
+      em.textContent = '🎫';
+      let t = null;
+      tKnopf.childNodes.forEach(function (n) { if (n.nodeType === 3) t = n; });
+      if (t) t.nodeValue = ' Tickets'; else tKnopf.appendChild(document.createTextNode(' Tickets'));
+    } else {
+      tKnopf.textContent = '🎫 Tickets';
+    }
+    // Zwischen "Üben" und "Prüfung" einsetzen
+    const pruefungsKnopf = gruppe.querySelector('.nav-btn[data-view="pruefung"]');
+    if (pruefungsKnopf) gruppe.insertBefore(tKnopf, pruefungsKnopf); else gruppe.appendChild(tKnopf);
+    // eigenes Symbol statt des geklonten Battle-Symbols
+    z(function () {
+      const neu = window.v123Symbol('tickets', '<path d="M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4z"/><path d="M14 7v2M14 11v2M14 15v2"/>');
+      const alt = tKnopf.querySelector('.v123-sym');
+      if (alt && neu) {
+        const frag = document.createRange().createContextualFragment(neu);
+        alt.parentNode.insertBefore(frag, alt);
+        alt.remove();
+      }
+    });
+    tKnopf.addEventListener('click', function () { oeffnen(); });
+  }
+  kastenUmsetzen();
+
+  /* ---------- 2) Suche ---------- */
+  const FUNKTIONEN = [
+    ['tickets', 'Ticketsystem', 'Störungen eingrenzen, Support-Level 1–3', 'ticket tickets ticketsystem störung störungen fehleranalyse fehlersuche incident support level helpdesk service desk befund'],
+    ['start', 'Startseite', 'Heute dran und Schnellzugriffe', 'start dashboard übersicht startseite heute'],
+    ['themen', 'Lernfelder', 'Lerninhalte aller zwölf Lernfelder', 'lernen lernfelder lernfeld themen inhalte erklärungen'],
+    ['dozent', 'Dozent', 'Erklärungen des Dozenten', 'dozent erklärung vorlesung'],
+    ['merksaetze', 'Merksätze', 'Kurze Merksätze zum Einprägen', 'merksätze merksatz merken'],
+    ['tricks', 'Tricks', 'Rechen- und Merktricks', 'tricks kniffe'],
+    ['grafiken', 'Grafiken', 'Schaubilder und Diagramme', 'grafiken bilder schaubild diagramm'],
+    ['glossar', 'Glossar', 'IT-Fachbegriffe nachschlagen', 'glossar fachbegriffe begriffe wörterbuch lexikon'],
+    ['lernpfad', 'Lernpfad', 'Reihenfolge der Lernfelder', 'lernpfad weg plan weiterlernen'],
+    ['quiz', 'Quiz', 'Multiple-Choice-Fragen mit Erklärung', 'quiz fragen üben multiple choice'],
+    ['karten', 'Karteikarten', 'Wiederholen mit Karteikarten', 'karteikarten karten lernkarten'],
+    ['vokabel', 'Abkürzungen', 'IT-Abkürzungen und ihre Langform', 'abkürzungen vokabeln akronym'],
+    ['uebungen', 'Übungsaufgaben', 'Aufgaben mit Musterlösung', 'übungsaufgaben aufgaben übungen fallaufgabe'],
+    ['rechnen', 'Rechentrainer', 'Rechenaufgaben und Formeln', 'rechentrainer rechnen subnetz formel'],
+    ['generator', 'KI-Generator', 'Eigene Aufgaben mit KI erzeugen', 'ki generator aufgaben erzeugen claude'],
+    ['pruefung', 'Prüfungssimulation', 'Prüfung unter Zeitdruck', 'prüfung prüfungssimulation test klausur simulation'],
+    ['pruefungsaufgaben', 'Prüfungsvorbereitung', 'Aufgaben im Prüfungsstil', 'prüfungsvorbereitung prüfungsaufgaben ihk ap1 ap2'],
+    ['endspurt', 'Endspurt', 'Gezielte Vorbereitung auf AP1', 'endspurt ap1 countdown'],
+    ['battle', 'Battle', 'Gegen andere im Quiz antreten', 'battle multiplayer mehrspieler duell raum freunde rangliste'],
+    ['statistik', 'Statistik', 'Fortschritt und Quote je Lernfeld', 'statistik fortschritt auswertung quote'],
+    ['wiederholung', 'Wiederholung', 'Fällige Fragen wiederholen', 'wiederholung wiederholen fällig spaced repetition'],
+    ['erfolge', 'Erfolge', 'Abzeichen und Level', 'erfolge abzeichen badges level rang xp'],
+    ['daten', 'Konto & Daten', 'Anmelden, Cloud-Stand, Export und Import', 'konto anmelden login registrieren backup export import cloud daten'],
+    ['faq', 'FAQ', 'Häufige Fragen zur App', 'faq hilfe fragen'],
+    ['einfuehrung', 'Einführung', 'Kurzer Rundgang durch die App', 'einführung hilfe rundgang anleitung']
+  ];
+
+  function ticketStufe(f) {
+    return f.stufe === 'leicht' ? 'Level 1' : f.stufe === 'mittel' ? 'Level 2' : 'Level 3';
+  }
+
+  window.v165SuchEintraege = function () {
+    const ix = [];
+    FUNKTIONEN.forEach(function (f) {
+      if (!knopf(f[0])) return;
+      ix.push({ typ: 'Funktion', c: '#6366f1', farbe: '#6366f1', h: f[1], m: f[2], k: f[3], view: f[0], v: f[0],
+        aktion: f[0] === 'tickets' ? function () { oeffnen(); } : function () { geh(f[0]); } });
+    });
+    z(function () {
+      window.v139Haken.faelle.forEach(function (f) {
+        ix.push({ typ: 'Ticket', c: '#ef4444', farbe: '#ef4444', h: f.titel,
+          m: f.ticket.nr + ' · ' + ticketStufe(f) + ' · ' + f.bereich,
+          k: 'ticket störung fehleranalyse ' + (f.ticket.meldung || ''),
+          view: 'tickets', v: 'tickets', aktion: function () { oeffnen(f.id); } });
+      });
+    });
+    z(function () {
+      (window.glossarBegriffe || []).forEach(function (g) {
+        ix.push({ typ: 'Glossar', c: '#0d9488', farbe: '#0d9488', h: g.begriff + (g.langform ? ' – ' + g.langform : ''),
+          m: String(g.erklaerung || '').slice(0, 110), view: 'glossar', v: 'glossar',
+          aktion: function () {
+            geh('glossar');
+            setTimeout(function () {
+              const i = document.getElementById('glo-suche');
+              if (i) { i.value = g.begriff; i.dispatchEvent(new Event('input', { bubbles: true })); }
+            }, 30);
+          } });
+      });
+    });
+    return ix;
+  };
+
+  /* ---------- 3) Startseite: Schnellzugriffe ---------- */
+  const KACHELN = [
+    { v: 'tickets', haupt: true, icon: '🎫', titel: 'Ticketsystem', text: 'Störungen eingrenzen und lösen, Support-Level 1–3.' },
+    { v: 'quiz', icon: '📝', titel: 'Üben', text: 'Quiz, Karteikarten und Übungsaufgaben.' },
+    { v: 'themen', icon: '📚', titel: 'Lernen', text: 'Lernfelder, Merksätze und Lernpfad.' },
+    { v: 'pruefung', icon: '🎯', titel: 'Prüfung', text: 'Simulation und Prüfungsvorbereitung.' },
+    { v: 'glossar', icon: '📖', titel: 'Glossar', text: 'IT-Fachbegriffe nachschlagen.' },
+    { v: 'battle', icon: '⚔️', titel: 'Battle', text: 'Gegen andere im Quiz antreten.' }
+  ];
+
+  function standZeile() {
+    const teile = [];
+    z(function () {
+      const e = window.v139Haken.ergebnisse(), f = window.v139Haken.faelle;
+      const voll = f.filter(function (x) { const r = e[x.id]; return r && r.ursache && r.massnahme; }).length;
+      teile.push('Tickets: ' + voll + ' von ' + f.length + ' gelöst');
+    });
+    return teile.join(' · ');
+  }
+
+  function zeichneSchnell() {
+    const a = document.getElementById('v42-start-area');
+    const heute = document.getElementById('v158-heute');
+    if (!a || !heute) return;
+    if (document.getElementById('v165-schnell')) return;   // sonst Endlosschleife über den Beobachter
+    const box = document.createElement('div');
+    box.id = 'v165-schnell';
+    box.className = 'v165-schnell';
+    const stand = standZeile();
+    box.innerHTML = (stand ? '<p class="v165-stand">' + esc(stand) + '</p>' : '') +
+      '<div class="v165-gitter">' + KACHELN.filter(function (k) { return !!knopf(k.v); }).map(function (k) {
+        return '<button type="button" class="v165-kachel' + (k.haupt ? ' haupt' : '') + '" data-v165="' + k.v + '">' +
+          '<b>' + k.icon + ' ' + esc(k.titel) + '</b><span>' + esc(k.text) + '</span></button>';
+      }).join('') + '</div>';
+    box.querySelectorAll('[data-v165]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (b.dataset.v165 === 'tickets') oeffnen(); else geh(b.dataset.v165);
+      });
+    });
+    heute.parentNode.insertBefore(box, heute.nextSibling);
+  }
+
+  const startBereich = document.getElementById('v42-start-area');
+  if (startBereich && typeof MutationObserver === 'function') {
+    new MutationObserver(function () { z(zeichneSchnell); }).observe(startBereich, { childList: true });
+  }
+  document.querySelectorAll('.nav-btn[data-view="start"]').forEach(function (b) {
+    b.addEventListener('click', function () { setTimeout(function () { const alt = document.getElementById('v165-schnell'); if (alt) { const st = alt.querySelector('.v165-stand'); if (st) st.textContent = standZeile(); } z(zeichneSchnell); }, 20); });
+  });
+  z(zeichneSchnell);
+
+  window.v165Tickets = { oeffnen: oeffnen };
+
+  window.v165Bericht = function () {
+    // v165-navigation
+    const maengel = [];
+    if (!document.getElementById('view-tickets')) maengel.push('Ansicht Tickets fehlt');
+    if (!knopf('tickets')) maengel.push('Menüpunkt Tickets fehlt');
+    const box = document.getElementById('ticket-modul');
+    if (!box) maengel.push('Ticket-Kasten fehlt');
+    else if (box.parentNode !== ansicht) maengel.push('Ticket-Kasten liegt nicht in der Ansicht Tickets');
+    const ix = z(function () { return window.v165SuchEintraege(); }, []);
+    if (!ix.some(function (e) { return e.typ === 'Funktion' && e.view === 'tickets'; })) maengel.push('Suche kennt das Ticketsystem nicht');
+    return { ebene: 'V165', menue: !!knopf('tickets'), suchEintraege: ix.length,
+             tickets: ix.filter(function (e) { return e.typ === 'Ticket'; }).length,
+             glossar: ix.filter(function (e) { return e.typ === 'Glossar'; }).length,
+             schnellzugriff: !!document.getElementById('v165-schnell'), maengel: maengel };
+  };
+})();
+// === V165 ENDE ===
+
 // === V69: EBENEN-REGISTER UND STARTPRÜFUNG ==================
 // ============================================================
 // Diese Datei besteht aus übereinandergelegten Ebenen. Spätere
@@ -31769,7 +32253,9 @@ window.dozentErklaerungen = {
     ['v160Bericht',            'v160-tickets',          'V160','Ticketsystem mit Support-Leveln: 30 Faelle in drei Stufen'],
     ['v161Bericht',            'v161-spoc',             'V161','SPOC und ACD: Glossar, Karten, Quizfragen, Merksatz und zwei Tickets'],
     ['v162Bericht',            'v162-konto',            'V162','Konten und Cloud-Fortschritt: Anmeldung, Abgleich, Konfliktfrage'],
-    ['v163Bericht',            'v163-battlekonto',      'V163','Battle mit Konten: Kontoname, Rangliste, Freunde und Einladungen']
+    ['v163Bericht',            'v163-battlekonto',      'V163','Battle mit Konten: Kontoname, Rangliste, Freunde und Einladungen'],
+    ['v164Bericht',            'v164-ticketanatomie',   'V164','Anatomie eines Servicetickets: Glossar, Karten, Quizfragen, Merksatz und zwei Tickets'],
+    ['v165Bericht',            'v165-navigation',       'V165','Ticketsystem im Menue, erweiterte Suche, Schnellzugriffe auf der Startseite']
   ];
 
   function pruefe(){
