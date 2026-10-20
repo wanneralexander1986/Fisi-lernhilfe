@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FiSi Lernhilfe V162 – Fachinformatiker Systemintegration</title>
+<title>FiSi Lernhilfe V163 – Fachinformatiker Systemintegration</title>
 <style>
   /* ===== V41: CSS-Token-System + Dark Mode ===== */
   :root {
@@ -665,7 +665,7 @@
       <div class="header-brand">
         <span class="header-logo">📚</span>
         <div>
-          <div class="header-title">FiSi Lernhilfe <span class="header-ver">V162</span></div>
+          <div class="header-title">FiSi Lernhilfe <span class="header-ver">V163</span></div>
           <div class="header-sub">Fachinformatiker Systemintegration · 12 Lernfelder</div>
         </div>
       </div>
@@ -10234,7 +10234,7 @@ const bessereAntwortenV58 = {
 // Selbsttest, der die Datenbestaende bei jedem Start pruefbar macht.
 (function v59(){
 
-  window.LERNHILFE_VERSION = 'V162';
+  window.LERNHILFE_VERSION = 'V163';
   const BEREICHE_GUELTIG = ['ap1','projekt','kai','aen','wiso'];
 
   // ---- Schluessel- und ID-Vergabe endgueltig festziehen ----
@@ -15675,7 +15675,7 @@ window.dozentErklaerungen = {
   // ==========================================================
   // ABSCHLUSS
   // ==========================================================
-  window.LERNHILFE_VERSION = 'V162';
+  window.LERNHILFE_VERSION = 'V163';
   aktualisiereFaelligChip();
   zeigeFortsetzenBanner();
   try { updateBoxBtns(); } catch(e){}
@@ -31058,6 +31058,7 @@ window.dozentErklaerungen = {
     }
     b.textContent = user ? '☁️' : '👤';
     b.title = user ? ('Angemeldet als ' + (profil && profil.name ? profil.name : 'Konto')) : 'Anmelden / Registrieren';
+    document.dispatchEvent(new Event('v162-konto'));
   }
 
   function karte() {
@@ -31291,7 +31292,7 @@ window.dozentErklaerungen = {
   }
 
   window.v162Konto = {
-    fehlerText: fehlerText, istSyncKey: istSyncKey, benutzernameOk: benutzernameOk, mailOk: mailOk, hashVon: hashVon,
+    ref: ref, fehlerText: fehlerText, istSyncKey: istSyncKey, benutzernameOk: benutzernameOk, mailOk: mailOk, hashVon: hashVon,
     lokaleSchluessel: lokaleSchluessel, lernstandLeer: lernstandLeer,
     mailVerschluesseln: mailVerschluesseln, mailEntschluesseln: mailEntschluesseln,
     registrieren: registrieren, anmelden: anmelden, zuruecksetzen: zuruecksetzen, abmelden: abmelden,
@@ -31322,6 +31323,327 @@ window.dozentErklaerungen = {
   };
 })();
 // === V162 ENDE ===
+
+// === V163: BATTLE MIT KONTEN ======================================
+// Aufbauend auf V162 (Konten und Cloud-Fortschritt). Das Battle selbst bleibt
+// unverändert; diese Ebene setzt von außen auf die Lobby auf:
+//   - Kontoname: Angemeldete treten mit ihrem Benutzernamen an (Feld gesperrt).
+//     Gäste spielen wie bisher mit frei gewähltem Namen.
+//   - Bilanz im Konto: Die Bilanz gegen wiederkehrende Gegner liegt unter
+//     fisi_battle_bilanz und wird seit V162 mit dem Lernstand synchronisiert.
+//     Sie geht also mit dem Konto auf jedes Gerät. Hier ist dafür nichts nötig.
+//   - Rangliste: Siege, Niederlagen und Unentschieden werden je Konto
+//     gemeldet (selbst gemeldet, nicht überprüfbar) und für Angemeldete
+//     angezeigt. Wer nicht gelistet sein will, schaltet es ab.
+//   - Freunde: Anfrage per Benutzername, Annehmen/Ablehnen, Einladung in den
+//     eigenen Raum. Einladen geht nur zwischen gegenseitigen Freunden.
+//
+// Datenbank (Regeln v6): rangliste/<uid>, nutzer/<uid>/freunde/<fuid>,
+// fanfragen/<ziel>/<von>, fantworten/<ziel>/<von>, einladungen/<ziel>/<von>.
+//
+// Kennzeichen für die V69-Startprüfung: v163-battlekonto
+(function v163BattleKonto() {
+  'use strict';
+
+  const BILANZ_KEY  = 'fisi_battle_bilanz';
+  const RANG_META   = 'fisi_konto_rang';
+  const EINLADUNG_MS = 15 * 60 * 1000;
+  const RANG_ANZAHL = 30, RANG_ZEIGEN = 15;
+  const NAME_RE = /^[A-Za-z0-9_-]{3,20}$/;
+
+  const daten = { freunde: [], anfragen: [], einladungen: [], rang: [], geladen: 0 };
+  let laedt = false, rangTimer = null, eingabeName = '', meldungText = '', meldungArt = '';
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  function konto() { return window.v162Konto; }
+  function zust() { return konto() ? konto().zustand() : { modus: 'aus' }; }
+  function angemeldet() { const z = zust(); return z.modus === 'an' && !!z.user && !!(z.profil && z.profil.name); }
+  function meinName() { return angemeldet() ? zust().profil.name : ''; }
+  function meineUid() { return angemeldet() ? zust().user : ''; }
+  function sichtbar() { const z = zust(); return !(z.profil && z.profil.rang === false); }
+  function R(pfad) { return konto().ref(pfad); }
+  function imRaum() { return window.battleBericht ? window.battleBericht().raum : null; }
+
+  /* ---------- Bilanz zusammenzählen ---------- */
+  function summe() {
+    let b = {};
+    try { b = JSON.parse(localStorage.getItem(BILANZ_KEY) || '{}') || {}; } catch (e) { b = {}; }
+    const t = { s: 0, n: 0, u: 0 };
+    Object.keys(b).forEach(function (k) {
+      t.s += (b[k].s || 0); t.n += (b[k].n || 0); t.u += (b[k].u || 0);
+    });
+    return t;
+  }
+
+  /* ---------- Rangliste: eigenen Stand melden ---------- */
+  function rangPushen(erzwingen) {
+    if (!angemeldet() || !sichtbar()) return Promise.resolve();
+    const t = summe();
+    if (t.s + t.n + t.u === 0) return Promise.resolve();
+    const stempel = meineUid() + ':' + t.s + ':' + t.n + ':' + t.u;
+    let letzter = '';
+    try { letzter = localStorage.getItem(RANG_META) || ''; } catch (e) { letzter = ''; }
+    if (!erzwingen && letzter === stempel) return Promise.resolve();
+    return R('rangliste/' + meineUid()).set({ name: meinName(), s: t.s, n: t.n, u: t.u, zeit: Date.now() }).then(function () {
+      try { localStorage.setItem(RANG_META, stempel); } catch (e) { /* Speicher voll: nächster Versuch beim nächsten Spiel */ }
+    }).catch(function (e) { meldung('Rangliste: ' + konto().fehlerText(e), 'fehler'); });
+  }
+  function sichtbarSetzen(an) {
+    if (!angemeldet()) return Promise.resolve();
+    const z = zust();
+    return R('nutzer/' + z.user + '/profil/rang').set(!!an).then(function () {
+      z.profil.rang = !!an;
+      return an ? rangPushen(true) : R('rangliste/' + z.user).remove().then(function () {
+        try { localStorage.removeItem(RANG_META); } catch (e) { /* unkritisch */ }
+      });
+    }).then(function () { return aktualisieren(true); }).catch(function (e) { meldung(konto().fehlerText(e), 'fehler'); });
+  }
+
+  /* ---------- Daten holen ---------- */
+  function liste(snap) {
+    const a = [];
+    snap.forEach(function (c) { a.push(Object.assign({ id: c.key }, c.val())); });
+    return a;
+  }
+  function aktualisieren(erzwingen) {
+    if (!angemeldet() || laedt) return Promise.resolve();
+    if (!erzwingen && Date.now() - daten.geladen < 15000) return Promise.resolve();
+    laedt = true;
+    const me = meineUid();
+    return Promise.all([
+      R('nutzer/' + me + '/freunde').once('value'),
+      R('fanfragen/' + me).once('value'),
+      R('fantworten/' + me).once('value'),
+      R('einladungen/' + me).once('value'),
+      R('rangliste').orderByChild('s').limitToLast(RANG_ANZAHL).once('value')
+    ]).then(function (r) {
+      daten.freunde = liste(r[0]);
+      daten.anfragen = liste(r[1]);
+      daten.rang = liste(r[4]).sort(function (a, b) {
+        const qa = a.s / Math.max(1, a.s + a.n + a.u), qb = b.s / Math.max(1, b.s + b.n + b.u);
+        return (b.s - a.s) || (qb - qa);
+      });
+      // Angenommene Anfragen: Gegenseite in die eigene Liste übernehmen
+      const jetzt = Date.now();
+      const antworten = liste(r[2]).map(function (x) {
+        if (daten.freunde.some(function (f) { return f.id === x.id; })) return R('fantworten/' + me + '/' + x.id).remove();
+        daten.freunde.push({ id: x.id, name: x.name, seit: jetzt });
+        return R('nutzer/' + me + '/freunde/' + x.id).set({ name: x.name, seit: jetzt }).then(function () {
+          return R('fantworten/' + me + '/' + x.id).remove();
+        });
+      });
+      // Abgelaufene Einladungen wegräumen
+      const alle = liste(r[3]);
+      daten.einladungen = alle.filter(function (e) { return jetzt - e.zeit <= EINLADUNG_MS; });
+      const alte = alle.filter(function (e) { return jetzt - e.zeit > EINLADUNG_MS; }).map(function (e) {
+        return R('einladungen/' + me + '/' + e.id).remove();
+      });
+      return Promise.all(antworten.concat(alte));
+    }).then(function () {
+      daten.geladen = Date.now();
+    }).catch(function (e) {
+      meldung(konto().fehlerText(e), 'fehler');
+    }).then(function () { laedt = false; listenZeichnen(); });
+  }
+
+  /* ---------- Aktionen ---------- */
+  function meldung(text, art) { meldungText = text || ''; meldungArt = art || ''; const e = document.getElementById('v163-meld'); if (e) { e.textContent = meldungText; e.className = 'bt-klein ' + meldungArt; } }
+  function anfrageSenden(name) {
+    name = (name || '').trim();
+    if (!NAME_RE.test(name)) return Promise.reject({ meldung: 'Bitte einen Benutzernamen eingeben (3–20 Zeichen).' });
+    if (name.toLowerCase() === meinName().toLowerCase()) return Promise.reject({ meldung: 'Das bist du selbst.' });
+    return R('namen/' + name.toLowerCase()).once('value').then(function (s) {
+      if (!s.exists()) throw { meldung: 'Diesen Benutzernamen gibt es nicht.' };
+      const ziel = s.child('uid').val();
+      if (daten.freunde.some(function (f) { return f.id === ziel; })) throw { meldung: name + ' ist schon in deiner Freundesliste.' };
+      return R('fanfragen/' + ziel + '/' + meineUid()).set({ name: meinName(), zeit: Date.now() });
+    });
+  }
+  function annehmen(id, name) {
+    const me = meineUid(), jetzt = Date.now();
+    return R('nutzer/' + me + '/freunde/' + id).set({ name: name, seit: jetzt })
+      .then(function () { return R('fantworten/' + id + '/' + me).set({ name: meinName(), zeit: jetzt }); })
+      .then(function () { return R('fanfragen/' + me + '/' + id).remove(); });
+  }
+  function ablehnen(id) { return R('fanfragen/' + meineUid() + '/' + id).remove(); }
+  function entfernen(id) { return R('nutzer/' + meineUid() + '/freunde/' + id).remove(); }
+  function einladen(id) {
+    const code = imRaum();
+    if (!code) return Promise.reject({ meldung: 'Eröffne zuerst einen Raum, dann kannst du einladen.' });
+    return R('einladungen/' + id + '/' + meineUid()).set({ name: meinName(), code: String(code).toUpperCase(), zeit: Date.now() });
+  }
+  function einladungAnnehmen(id, code) {
+    const feld = document.getElementById('bt-code'), knopf = document.getElementById('bt-join');
+    if (!feld || !knopf) { meldung('Verlasse zuerst deinen aktuellen Raum.', 'fehler'); return Promise.resolve(); }
+    feld.value = code; knopf.click();
+    return R('einladungen/' + meineUid() + '/' + id).remove();
+  }
+
+  /* ---------- Oberfläche ---------- */
+  function stil() {
+    if (document.getElementById('v163-stil')) return;
+    const s = document.createElement('style');
+    s.id = 'v163-stil';
+    s.textContent = [
+      '#v163-karte .v163-h{font-size:12.5px;font-weight:700;margin:12px 0 4px 0;opacity:.85;}',
+      '#v163-karte .v163-z{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;}',
+      '#v163-karte .v163-z.ich{font-weight:700;color:var(--primary-t);}',
+      '#v163-karte .v163-z .v163-a{display:flex;gap:6px;flex-shrink:0;}',
+      '#v163-karte .bt-klein.fehler{color:var(--danger);font-weight:600;}',
+      '#v163-karte .bt-klein.ok{color:var(--success-t2);font-weight:600;}'
+    ].join('\n');
+    document.head.appendChild(s);
+  }
+  function knopf(aktion, id, text, extra, leise) {
+    return '<button class="bt-knopf' + (leise ? ' leise' : '') + '" style="padding:5px 10px;font-size:12px;" data-v163="' + aktion + '" data-id="' + esc(id) + '"' +
+      (extra ? ' ' + extra : '') + '>' + text + '</button>';
+  }
+  function listenHTML() {
+    const raum = !!imRaum();
+    const lobby = !!document.getElementById('bt-name');
+    let h = '';
+    if (!raum && daten.einladungen.length) {
+      h += '<div class="v163-h">📨 Einladungen</div>' + daten.einladungen.map(function (e) {
+        return '<div class="v163-z"><span><b>' + esc(e.name) + '</b> lädt dich ein <span class="bt-klein">(Code ' + esc(e.code) + ')</span></span><span class="v163-a">' +
+          (lobby ? knopf('beitreten', e.id, 'Beitreten', 'data-code="' + esc(e.code) + '"') : '') + knopf('verwerfen', e.id, '✕', '', true) + '</span></div>';
+      }).join('');
+    }
+    if (!raum && daten.anfragen.length) {
+      h += '<div class="v163-h">🤝 Freundschaftsanfragen</div>' + daten.anfragen.map(function (a) {
+        return '<div class="v163-z"><span><b>' + esc(a.name) + '</b> möchte dein Freund sein</span><span class="v163-a">' +
+          knopf('annehmen', a.id, 'Annehmen', 'data-name="' + esc(a.name) + '"') + knopf('ablehnen', a.id, 'Ablehnen', '', true) + '</span></div>';
+      }).join('');
+    }
+    h += '<div class="v163-h">👥 Freunde' + (raum ? ' einladen' : '') + '</div>';
+    if (!daten.freunde.length) h += '<div class="bt-klein">Noch keine Freunde. Trage unten einen Benutzernamen ein.</div>';
+    else h += daten.freunde.map(function (f) {
+      return '<div class="v163-z"><span>' + esc(f.name) + '</span><span class="v163-a">' +
+        (raum ? knopf('einladen', f.id, 'Einladen') : '') + (raum ? '' : knopf('entfernen', f.id, 'Entfernen', '', true)) + '</span></div>';
+    }).join('');
+    if (!raum) {
+      h += '<div class="v163-h">🏆 Rangliste</div>';
+      if (!daten.rang.length) h += '<div class="bt-klein">Noch keine Einträge. Sie erscheinen nach der ersten Runde gegen andere.</div>';
+      else h += daten.rang.slice(0, RANG_ZEIGEN).map(function (x, i) {
+        return '<div class="v163-z' + (x.id === meineUid() ? ' ich' : '') + '"><span>' + (i + 1) + '. ' + esc(x.name) + '</span><span><b>' + x.s + '</b> : <b>' + x.n + '</b>' + (x.u ? ' : ' + x.u : '') + '</span></div>';
+      }).join('') + '<div class="bt-klein" style="margin-top:4px;">Siege : Niederlagen. Die Werte meldet jeder selbst.</div>';
+      h += '<label class="bt-klein" style="display:block;margin-top:8px;"><input type="checkbox" id="v163-sichtbar"' + (sichtbar() ? ' checked' : '') + '> Ich erscheine in der Rangliste</label>';
+    }
+    return h;
+  }
+  function listenZeichnen() {
+    const el = document.getElementById('v163-listen');
+    if (el) el.innerHTML = listenHTML();
+  }
+  function kartenHTML() {
+    if (!angemeldet()) {
+      return '<strong style="font-size:14px;">👥 Freunde &amp; Rangliste</strong>' +
+        '<div class="bt-klein" style="margin:6px 0 8px;">Mit einem Konto spielst du unter deinem Benutzernamen, siehst die Rangliste und kannst Freunde in deinen Raum einladen. Gäste können weiterhin mit Raumcode und frei gewähltem Namen mitspielen.</div>' +
+        '<button class="bt-knopf leise" data-v163="zumkonto" id="v163-zumkonto">Anmelden oder registrieren</button>';
+    }
+    const raum = !!imRaum();
+    return '<strong style="font-size:14px;">👥 ' + (raum ? 'Freunde einladen' : 'Freunde &amp; Rangliste') + '</strong>' +
+      '<div id="v163-listen">' + listenHTML() + '</div>' +
+      (raum ? '' : '<div class="bt-zeile" style="margin:10px 0 0 0;"><input class="bt-feld" id="v163-name" style="flex:1 1 180px;" maxlength="20" placeholder="Benutzername des Freundes" value="' + esc(eingabeName) + '" autocomplete="off" autocapitalize="none">' +
+        '<button class="bt-knopf leise" data-v163="anfrage">Anfrage senden</button></div>') +
+      '<div class="bt-klein" id="v163-meld" style="margin-top:6px;min-height:16px;">' + esc(meldungText) + '</div>';
+  }
+  function injizieren() {
+    const cont = document.getElementById('battle-bereich');
+    if (!cont) return;
+    stil();
+    // Kontoname in die Lobby
+    const nm = document.getElementById('bt-name');
+    if (nm && angemeldet() && (nm.value !== meinName() || !nm.readOnly)) {
+      nm.value = meinName(); nm.readOnly = true; nm.title = 'Dein Kontoname';
+    }
+    if (document.getElementById('v163-karte')) return;
+    const lobby = !!nm, raum = !!imRaum();
+    if (!lobby && !raum) return;
+    const k = document.createElement('div');
+    k.className = 'bt-karte'; k.id = 'v163-karte';
+    k.innerHTML = kartenHTML();
+    cont.appendChild(k);
+    k.addEventListener('click', klick);
+    const inp = k.querySelector('#v163-name');
+    if (inp) inp.addEventListener('input', function () { eingabeName = inp.value; });
+    k.addEventListener('change', function (ev) {
+      if (ev.target && ev.target.id === 'v163-sichtbar') sichtbarSetzen(ev.target.checked);
+    });
+    if (angemeldet()) aktualisieren(false);
+  }
+  function klick(ev) {
+    const b = ev.target.closest ? ev.target.closest('[data-v163]') : null;
+    if (!b) return;
+    const a = b.getAttribute('data-v163'), id = b.getAttribute('data-id');
+    const fertig = function (text) { meldung(text || '', text ? 'ok' : ''); return aktualisieren(true); };
+    const fehl = function (e) { meldung(konto().fehlerText(e), 'fehler'); };
+    if (a === 'zumkonto') { const nb = document.querySelector('.nav-btn[data-view="daten"]'); if (nb) nb.click(); return; }
+    if (a === 'anfrage') {
+      const f = document.getElementById('v163-name');
+      anfrageSenden(f ? f.value : '').then(function () { eingabeName = ''; if (f) f.value = ''; return fertig('Anfrage gesendet.'); }).catch(fehl); return;
+    }
+    if (a === 'annehmen') { annehmen(id, b.getAttribute('data-name')).then(function () { return fertig('Ihr seid jetzt Freunde.'); }).catch(fehl); return; }
+    if (a === 'ablehnen' || a === 'verwerfen') {
+      (a === 'ablehnen' ? ablehnen(id) : R('einladungen/' + meineUid() + '/' + id).remove()).then(function () { return fertig(''); }).catch(fehl); return;
+    }
+    if (a === 'entfernen') { entfernen(id).then(function () { return fertig('Freund entfernt.'); }).catch(fehl); return; }
+    if (a === 'einladen') { einladen(id).then(function () { meldung('Einladung gesendet. Sie gilt 15 Minuten.', 'ok'); }).catch(fehl); return; }
+    if (a === 'beitreten') { einladungAnnehmen(id, b.getAttribute('data-code')).catch(fehl); }
+  }
+
+  /* ---------- Verdrahtung ---------- */
+  const vorherSet = Storage.prototype.setItem;
+  Storage.prototype.setItem = function (k) {
+    const r = vorherSet.apply(this, arguments);
+    if (this === window.localStorage && k === BILANZ_KEY) {
+      clearTimeout(rangTimer);
+      rangTimer = setTimeout(function () { rangPushen(false); }, 3000);
+    }
+    return r;
+  };
+  function neuZeichnen() {
+    const k = document.getElementById('v163-karte');
+    if (k) k.remove();
+    injizieren();
+  }
+  document.addEventListener('v162-konto', function () {
+    daten.geladen = 0;
+    neuZeichnen();
+    if (angemeldet()) rangPushen(false);
+  });
+  (function beobachten() {
+    const cont = document.getElementById('battle-bereich');
+    if (!cont) return;
+    new MutationObserver(function () { injizieren(); }).observe(cont, { childList: true });
+    injizieren();
+  })();
+  setInterval(function () {
+    const v = document.getElementById('view-battle');
+    if (v && v.classList.contains('active') && angemeldet()) aktualisieren(true);
+  }, 30000);
+
+  window.v163Battle = {
+    summe: summe, aktualisieren: aktualisieren, rangPushen: rangPushen, sichtbarSetzen: sichtbarSetzen,
+    anfrageSenden: anfrageSenden, annehmen: annehmen, ablehnen: ablehnen, entfernen: entfernen, einladen: einladen,
+    daten: daten, injizieren: injizieren
+  };
+
+  window.v163Bericht = function () {
+    // v163-battlekonto
+    const maengel = [];
+    if (!document.getElementById('battle-bereich')) maengel.push('Battle-Bereich fehlt');
+    if (!konto()) maengel.push('V162-Konto-Ebene fehlt');
+    const t = summe();
+    if (typeof t.s !== 'number' || typeof t.n !== 'number' || typeof t.u !== 'number') maengel.push('Bilanzsumme fehlerhaft');
+    if (!window.battleBericht) maengel.push('Battle-Bericht fehlt');
+    return { ebene: 'V163', angemeldet: angemeldet(), bilanz: t, maengel: maengel };
+  };
+})();
+// === V163 ENDE ===
 
 // === V69: EBENEN-REGISTER UND STARTPRÜFUNG ==================
 // ============================================================
@@ -31446,7 +31768,8 @@ window.dozentErklaerungen = {
     ['v159Bericht',            'v159-combo',            'V159','Combo-Serien im Quiz (mehr XP ab 3 richtigen in Folge)'],
     ['v160Bericht',            'v160-tickets',          'V160','Ticketsystem mit Support-Leveln: 30 Faelle in drei Stufen'],
     ['v161Bericht',            'v161-spoc',             'V161','SPOC und ACD: Glossar, Karten, Quizfragen, Merksatz und zwei Tickets'],
-    ['v162Bericht',            'v162-konto',            'V162','Konten und Cloud-Fortschritt: Anmeldung, Abgleich, Konfliktfrage']
+    ['v162Bericht',            'v162-konto',            'V162','Konten und Cloud-Fortschritt: Anmeldung, Abgleich, Konfliktfrage'],
+    ['v163Bericht',            'v163-battlekonto',      'V163','Battle mit Konten: Kontoname, Rangliste, Freunde und Einladungen']
   ];
 
   function pruefe(){
